@@ -23,9 +23,10 @@ class Link:
         current_visual = len(self.visuals) - 1
         self.visuals[current_visual].origin["rpy"] = np.array(rpy)
 
-    def setVisualGeometryMeshFilename(self, filename):
+    def setVisualGeometryMeshFilename(self, filename, scale=[1., 1., 1.]):
         current_visual = len(self.visuals) - 1
         self.visuals[current_visual].geometry_mesh["filename"] = filename
+        self.visuals[current_visual].geometry_mesh["scale"] = scale
 
     def __repr__(self):
         output = {}
@@ -38,7 +39,7 @@ class Visual:
     def __init__(self, visual_name=None):
         self.visual_name = visual_name
         self.origin = {"xyz": np.array([0, 0, 0]), "rpy": np.array([0, 0, 0])}
-        self.geometry_mesh = {"filename": None}
+        self.geometry_mesh = {"filename": None, "scale": [1., 1., 1.]}
 
     def __repr__(self):
         output = {}

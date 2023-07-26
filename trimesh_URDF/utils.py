@@ -46,10 +46,10 @@ def SampleSurfaceFromTrimeshScene(trimesh_scene, num_points):
 
 # Load the URDF into trimesh, return the urdf and controller
 # JointInfo: whether to print all the joint information
-def getURDF(path, JointInfo=False):
+def getURDF(path, JointInfo=False, from_visual=True):
     # Initialize the URDF
     # Parse the URDF file
-    parser = URDFParser(path)
+    parser = URDFParser(path, from_visual)
     parser.parse()
     # Construct the URDF tree
     links = parser.links

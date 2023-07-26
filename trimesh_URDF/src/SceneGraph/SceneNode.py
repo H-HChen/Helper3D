@@ -82,20 +82,23 @@ class SceneNode:
         # mesh should be in open3d form
         self.meshNode.addMesh(mesh)
 
-    def addMeshFile(self, mesh_file):
-        self.meshNode.addMeshFile(mesh_file)
+    def addMeshFile(self, mesh_file, scale):
+        self.meshNode.addMeshFile(mesh_file, scale)
 
-    def getMesh(self):
+    def getMesh(self, scene=True):
         # Get the new mesh based on the world Matrix (Assume that the matrix has been updatated) and all mesh in the children node
-        new_mesh = self.meshNode.getMesh(self.worldMatrix)
+        new_mesh = self.meshNode.getMesh(self.worldMatrix, scene)
         if new_mesh != None:
             new_mesh = [new_mesh]
         else:
             new_mesh = []
         # add mesh from all children
         for child in self.children:
-            new_mesh += child.getMesh()
-        new_mesh = trimesh.scene.scene.append_scenes(new_mesh)
+            new_mesh += child.getMesh(scene)
+        if scene:
+            new_mesh = trimesh.scene.scene.append_scenes(new_mesh)
+        else:
+            new_mesh = trimesh.util.concatenate(new_mesh)
         return new_mesh
 
     def getControllerNodeMesh(self):
@@ -108,7 +111,7 @@ class SceneNode:
         return new_mesh
 
     # Rotation is in degree, translation is in meter
-    def interact(self, change):
+    def interact(self, change, absolute=False):
         if (
             self.joint.joint_type != "revolute"
             and self.joint.joint_type != "prismatic"
@@ -119,11 +122,16 @@ class SceneNode:
             )
             return
         if self.joint.joint_type == "revolute" or self.joint.joint_type == "continuous":
+            if absolute:
+                self.interactMatrix = np.eye(4)
             self.translate(-self.joint.origin["xyz"])
             self.rotate(self.joint.axis, change)
             self.translate(self.joint.origin["xyz"])
         if self.joint.joint_type == "prismatic":
+            if absolute:
+                self.interactMatrix = np.eye(4)
             self.translate(self.joint.axis * change)
+
         self.needUpdate = True
 
     def translate(self, translation):
@@ -139,13 +147,7 @@ class SceneNode:
         self.interactMatrix = np.dot(transMat, self.interactMatrix)
 
     def rotate(self, axis, angle):
-        # Convert axis into 3*1 array
-        axis = axis / np.linalg.norm(axis)
-        axisAngle = axis * angle
-        # matrix here is 3*3
-        matrix = self._transformHelper.get_rotation_matrix_from_axis_angle(axisAngle)
-        rotMat = np.eye(4)
-        rotMat[0:3, 0:3] = matrix
+        rotMat = self.get_axis_matrix(axis, angle)
         self.interactMatrix = np.dot(rotMat, self.interactMatrix)
 
     def translateLocal(self, translation):
@@ -167,11 +169,18 @@ class SceneNode:
         self.rotateLocal(np.array([0, 0, 1]), rpy[2])
 
     def rotateLocal(self, axis, angle):
+        rotMat = self.get_axis_matrix(axis, angle)
+        self.localTransform = np.dot(rotMat, self.localTransform)
+
+    def get_axis_matrix(self, axis, angle):
         # Convert axis into 3*1 array
         axis = axis / np.linalg.norm(axis)
         axisAngle = axis * angle
         # matrix here is 3*3
-        matrix = self._transformHelper.get_rotation_matrix_from_axis_angle(axisAngle)
+        if np.all(axisAngle == 0):
+            matrix = np.eye(3)
+        else:
+            matrix = self._transformHelper.get_rotation_matrix_from_axis_angle(axisAngle)
         rotMat = np.eye(4)
         rotMat[0:3, 0:3] = matrix
-        self.localTransform = np.dot(rotMat, self.localTransform)
+        return rotMat

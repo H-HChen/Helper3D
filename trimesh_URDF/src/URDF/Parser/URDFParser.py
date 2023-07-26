@@ -12,9 +12,10 @@ def parseThreeNumber(string):
 
 
 class URDFParser:
-    def __init__(self, file_name):
+    def __init__(self, file_name, from_visual):
         self.file_name = file_name
         self._root_path = os.path.dirname(file_name) + "/"
+        self.from_visual = from_visual
         self.links = {}
         self.joints = {}
 
@@ -25,15 +26,16 @@ class URDFParser:
         self.links_xml = root_xml.findall("link")
         self.joints_xml = root_xml.findall("joint")
         # Parse links before parsing joints
-        self.parseLinks()
+        self.parseLinks(self.from_visual)
         self.parseJoints()
 
-    def parseLinks(self):
+    def parseLinks(self, if_visual=True):
         for link_xml in self.links_xml:
             link_name = link_xml.attrib["name"]
             link = Link(link_name)
             # Deal with multiple visuals
-            visuals_xml = link_xml.findall("visual")
+            index_text = "visual" if if_visual else "collision"
+            visuals_xml = link_xml.findall(index_text)
             for visual_xml in visuals_xml:
                 # Add new visual in link
                 if "name" in visual_xml.attrib:
@@ -56,7 +58,14 @@ class URDFParser:
                     mesh_xml = geometry_xml.find("mesh")
                     if mesh_xml != None:
                         filename = mesh_xml.attrib["filename"]
-                        link.setVisualGeometryMeshFilename(self._root_path + filename)
+                        if "scale" in mesh_xml.keys():
+                            scale = parseThreeNumber(mesh_xml.attrib["scale"])
+                        else:
+                            scale = [1., 1., 1.]
+                        link.setVisualGeometryMeshFilename(self._root_path + filename, scale)
+                    elif geometry_xml.find("box") != None:
+                        size = parseThreeNumber(geometry_xml.find("box").attrib["size"])
+                        link.setVisualGeometryMeshFilename("default_box", size)
             self.links[link_name] = link
 
     def parseJoints(self):

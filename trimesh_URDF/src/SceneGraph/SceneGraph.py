@@ -26,10 +26,10 @@ class SceneGraph:
     def update(self):
         self.root.update()
 
-    def getMesh(self):
+    def getMesh(self, scene=True):
         self.update()
         # The mesh has been one scene in trimesh
-        mesh = self.root.getMesh()
+        mesh = self.root.getMesh(scene)
         return mesh
 
     def constructNode(self, node, link):
@@ -48,10 +48,13 @@ class SceneGraph:
         for visual in visuals:
             visual_node = SceneNode(node)
             node.addChild(visual_node)
-            visual_node.name = node.name + "_mesh:" + visual.visual_name
+            if visual.visual_name:
+                visual_node.name = node.name + "_mesh:" + visual.visual_name
+            else:
+                visual_node.name = node.name
             if visual.geometry_mesh["filename"] == None:
                 raise RuntimeError("Invalid File path")
-            visual_node.addMeshFile(visual.geometry_mesh["filename"])
+            visual_node.addMeshFile(visual.geometry_mesh["filename"], visual.geometry_mesh["scale"])
             # Deal with xyz and rpy of the visual node
             visual_xyz = visual.origin["xyz"]
             visual_rpy = visual.origin["rpy"]
